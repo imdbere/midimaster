@@ -1,0 +1,7 @@
+# Global MidiMaster settings
+
+midi:
+  # "virtual"  → creates a virtual MIDI port named "MidiMaster" (macOS/Linux)
+  # Port name  → e.g. "IAC Driver Bus 1"
+  # Port index → 0, 1, 2 ...  (run `curl localhost:3000/midi/ports` to list)
+  port: virtual

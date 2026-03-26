@@ -1,0 +1,107 @@
+name: Mixer
+description: Volume, filter, and FX faders
+color: "#2471a3"
+
+layout:
+  columns: 4
+  gap: 10
+
+controls:
+  # ── Channel faders ──────────────────────────────────────────────────────────
+  - type: slider
+    label: Ch 1
+    cc: 7
+    channel: 1
+    min: 0
+    max: 127
+    default: 100
+    color: "#2ecc71"
+
+  - type: slider
+    label: Ch 2
+    cc: 8
+    channel: 1
+    min: 0
+    max: 127
+    default: 100
+    color: "#27ae60"
+    span: 2
+
+  - type: slider
+    label: Master
+    cc: 7
+    channel: 16
+    min: 0
+    max: 127
+    default: 100
+    color: "#f39c12"
+
+  # ── FX ──────────────────────────────────────────────────────────────────────
+  - type: slider
+    label: Filter
+    cc: 74
+    channel: 1
+    min: 0
+    max: 127
+    default: 64
+    color: "#2471a3"
+    span: 2
+
+  - type: slider
+    label: Resonance
+    cc: 71
+    channel: 1
+    min: 0
+    max: 127
+    default: 20
+    color: "#1a5276"
+    span: 2
+
+  - type: slider
+    label: Reverb
+    cc: 91
+    channel: 1
+    min: 0
+    max: 127
+    default: 30
+    color: "#7d3c98"
+    span: 2
+
+  - type: slider
+    label: Delay
+    cc: 93
+    channel: 1
+    min: 0
+    max: 127
+    default: 15
+    color: "#6c3483"
+    span: 2
+
+  # ── Mute buttons ────────────────────────────────────────────────────────────
+  - type: button
+    label: Mute 1
+    cc: 20
+    value: 127
+    channel: 1
+    color: "#922b21"
+
+  - type: button
+    label: Mute 2
+    cc: 21
+    value: 127
+    channel: 1
+    color: "#922b21"
+
+  - type: button
+    label: Mute 3
+    cc: 22
+    value: 127
+    channel: 1
+    color: "#922b21"
+
+  - type: button
+    label: Solo
+    cc: 66
+    value: 127
+    channel: 1
+    color: "#9a7d0a"

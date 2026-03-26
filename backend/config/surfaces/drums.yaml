@@ -1,0 +1,122 @@
+name: Drum Pads
+description: 8-pad drum machine + scene launch
+color: "#c0392b"
+
+layout:
+  columns: 4
+  gap: 10
+
+controls:
+  # ── Pads row 1 ──────────────────────────────────────────────────────────────
+  - type: button
+    label: Kick
+    note: 36
+    velocity: 127
+    channel: 10
+    color: "#c0392b"
+    rowSpan: 2
+    span: 2
+
+  - type: button
+    label: Hi-Hat
+    note: 42
+    velocity: 90
+    channel: 10
+    color: "#d4ac0d"
+
+  - type: button
+    label: Open HH
+    note: 46
+    velocity: 85
+    channel: 10
+    color: "#b7950b"
+
+  # ── Pads row 2 ──────────────────────────────────────────────────────────────
+  - type: button
+    label: Snare
+    note: 38
+    velocity: 110
+    channel: 10
+    color: "#e67e22"
+
+  - type: button
+    label: Clap
+    note: 39
+    velocity: 100
+    channel: 10
+    color: "#884ea0"
+
+  # ── Pads row 3 ──────────────────────────────────────────────────────────────
+  - type: button
+    label: Tom
+    note: 45
+    velocity: 100
+    channel: 10
+    color: "#1a5276"
+
+  - type: button
+    label: Crash
+    note: 49
+    velocity: 100
+    channel: 10
+    color: "#117a65"
+
+  - type: button
+    label: Ride
+    note: 51
+    velocity: 80
+    channel: 10
+    color: "#1e8449"
+
+  - type: button
+    label: Perc
+    note: 56
+    velocity: 100
+    channel: 10
+    color: "#6e2f1a"
+
+  # ── Scene Launch ────────────────────────────────────────────────────────────
+  - type: button
+    label: Scene 1
+    note: 0
+    velocity: 127
+    channel: 1
+    color: "#1abc9c"
+    span: 2
+
+  - type: button
+    label: Scene 2
+    note: 1
+    velocity: 127
+    channel: 1
+    color: "#2980b9"
+    span: 2
+
+  # ── Transport ────────────────────────────────────────────────────────────────
+  - type: toggle
+    label: Loop
+    cc: 64
+    value: 127
+    channel: 1
+    color: "#7d3c98"
+
+  - type: toggle
+    label: Mute
+    cc: 65
+    value: 127
+    channel: 1
+    color: "#922b21"
+
+  - type: button
+    label: Play
+    note: 93
+    velocity: 127
+    channel: 1
+    color: "#196f3d"
+
+  - type: button
+    label: Stop
+    note: 94
+    velocity: 127
+    channel: 1
+    color: "#4d2600"
