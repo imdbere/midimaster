@@ -129,11 +129,20 @@ pub fn run() {
             let (broadcast_tx, _) = broadcast::channel::<String>(64);
             let client_count = Arc::new(AtomicUsize::new(0));
 
-            // In prod, serve frontend/dist; in dev the proxy handles it
-            let static_dir = app
-                .path()
-                .resolve("../frontend/dist", tauri::path::BaseDirectory::Resource)
-                .unwrap_or_else(|_| PathBuf::from("frontend/dist"));
+            // Locate the web UI files to serve over HTTP for browser clients.
+            // In prod: Tauri places frontendDist files in resource_dir() on macOS.
+            // In dev:  dist/ is built by Vite at the project root (CWD).
+            // In prod: Tauri places ../dist/** into resource_dir()/www/ via bundle.resources.
+            // In dev:  fall back to dist/ in the project root (built by Vite / CWD).
+            let static_dir = app.path().resource_dir()
+                .ok()
+                .map(|p| p.join("www"))
+                .filter(|p| p.join("index.html").exists())
+                .unwrap_or_else(|| {
+                    std::env::current_dir()
+                        .unwrap_or_default()
+                        .join("dist")
+                });
 
             let server_state = ServerState {
                 midi: Arc::clone(&midi),
@@ -152,13 +161,8 @@ pub fn run() {
             // mDNS advertising
             mdns::advertise(PORT);
 
-            // Build share URL for tray use
-            let share_url = {
-                let ip = mdns::get_local_ip();
-                let hostname = mdns::get_mdns_hostname();
-                ip.map(|i| format!("http://{}:{}", i, PORT))
-                    .unwrap_or_else(|| format!("http://{}.local:{}", hostname, PORT))
-            };
+            // Build share URL for tray use — always use mDNS name
+            let share_url = format!("http://{}.local:{}", mdns::get_mdns_hostname(), PORT);
             app.manage(SharedUrl(Mutex::new(share_url.clone())));
 
             // ── System tray ───────────────────────────────────────────────────

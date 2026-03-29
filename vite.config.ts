@@ -5,6 +5,7 @@ import { resolve } from 'path'
 export default defineConfig({
   plugins: [solidPlugin()],
   server: {
+    allowedHosts: true,
     proxy: {
       '/api': 'http://localhost:3000',
       '/ws': {

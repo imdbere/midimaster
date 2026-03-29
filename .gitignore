@@ -37,6 +37,10 @@ lerna-debug.log*
 node_modules
 dist
 dist-ssr
+# Allow stub files needed for tauri-build resource glob validation on clean checkouts
+!dist/index.html
+!dist/desktop.html
+!dist/assets/.gitkeep
 *.local
 
 # Editor directories and files

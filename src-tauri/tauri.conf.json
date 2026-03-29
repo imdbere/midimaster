@@ -16,7 +16,7 @@
         "title": "Midi Master",
         "url": "desktop.html",
         "width": 480,
-        "height": 520,
+        "height": 600,
         "resizable": false,
         "center": true
       }
@@ -35,9 +35,12 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ],
-    "resources": [
-      "config/settings.yaml",
-      "config/surfaces/*.yaml"
-    ]
+    "resources": {
+      "config/settings.yaml": "config/settings.yaml",
+      "config/surfaces/*.yaml": "config/surfaces/",
+      "../dist/index.html": "www/index.html",
+      "../dist/desktop.html": "www/desktop.html",
+      "../dist/assets/*": "www/assets/"
+    }
   }
 }

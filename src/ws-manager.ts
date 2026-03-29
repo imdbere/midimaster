@@ -1,4 +1,5 @@
 import ReconnectingWebSocket from 'partysocket/ws'
+import { wsUrl } from './server-url'
 
 type WsListener = (msg: Record<string, unknown>) => void
 
@@ -12,10 +13,7 @@ class WsManager {
   onStatusChange: (() => void) | null = null
 
   connect(): void {
-    const proto = location.protocol === 'https:' ? 'wss' : 'ws'
-    const url = `${proto}://${location.host}/ws`
-
-    this.ws = new ReconnectingWebSocket(url, undefined, {
+    this.ws = new ReconnectingWebSocket(wsUrl(), undefined, {
       minReconnectionDelay: 1000,
       maxReconnectionDelay: 8000,
       reconnectionDelayGrowFactor: 1.5,

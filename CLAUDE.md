@@ -1,66 +1,88 @@
 # MidiMaster
 
-Web-based MIDI controller. Backend runs on a laptop and sends MIDI to Ableton Live; frontend runs in any browser on the same network (phone, tablet, etc.).
+Tauri V2 desktop app + web-based MIDI controller. The Rust backend runs inside the Tauri process and sends MIDI to Ableton Live (or any DAW). The web frontend runs in any browser on the same network (phone, tablet, etc.).
 
 ## Commands
 
 ```bash
-npm run dev        # run both backend and frontend concurrently (development)
-npm run build      # build frontend into frontend/dist/
-npm start          # run backend only (serves built frontend in production)
+# Desktop app (Tauri) — recommended for daily use
+npm run tauri:dev      # start Tauri dev app (auto-starts Vite + opens window)
+npm run tauri:build    # build distributable .app / installer
+
+# Web frontend only (Vite dev server, no Tauri)
+npm run dev            # vite --host on :5173 (for browser-only testing)
+npm run build          # vite build → dist/
+npm run typecheck      # tsc --noEmit
+
+# Rust backend only
+cd src-tauri && cargo check
+cd src-tauri && cargo build
 ```
 
-Backend only:
-```bash
-npm run dev -w backend       # tsx watch (auto-restarts on file change)
-npm run typecheck -w backend
-```
-
-Frontend only:
-```bash
-npm run dev -w frontend      # vite --host (exposed on all network interfaces)
-npm run typecheck -w frontend
-```
+**Port note:** The Rust backend always binds to port 3000. If you change it, update `const PORT` in `src-tauri/src/lib.rs` AND `BACKEND_PORT` in `src/server-url.ts`.
 
 ## Architecture
 
-**Monorepo** with two npm workspaces: `backend/` and `frontend/`.
+### Desktop app (`src-tauri/`)
 
-### Backend (`backend/src/`)
-
-Node.js + TypeScript, runs via `tsx` (no compile step).
+Rust + Tauri V2. The backend runs as part of the Tauri process — no Node.js required.
 
 | File | Purpose |
 |------|---------|
-| `index.ts` | Express server + WebSocket server at `/ws` |
-| `midi-manager.ts` | MIDI output — virtual port, named port, or port index |
-| `surface-manager.ts` | Loads `config/surfaces/*.yaml`, watches for hot-reload |
-| `mdns.ts` | Advertises `midimaster-<hostname>.local` via `@homebridge/ciao` |
-| `types.ts` | TypeScript interfaces for controls, surfaces, server info |
+| `src/lib.rs` | Tauri setup: backend startup, system tray, Tauri commands |
+| `src/main.rs` | Binary entry point |
+| `src/backend/midi.rs` | MIDI output via `midir` — virtual port, named port, or index |
+| `src/backend/surfaces.rs` | Loads `config/surfaces/*.yaml`, watches for hot-reload |
+| `src/backend/mdns.rs` | Advertises `midimaster-<hostname>.local` via `mdns-sd` |
+| `src/backend/server.rs` | Axum HTTP + WebSocket server on `:3000` |
+| `src/backend/types.rs` | Shared Rust types (Control, SurfaceConfig, etc.) |
+| `config/` | Default config files bundled as Tauri resources |
+| `tauri.conf.json` | Tauri config: window, bundle, icons, resources |
 
-REST API:
+**Tauri commands** (callable from the desktop window via `invoke()`):
+- `open_in_browser(url)` — opens URL in default browser
+- `open_config_folder()` — opens the user config dir in Finder
+- `quit_app()` — exits the app
+
+**System tray:** Show Window, Copy Link (uses clipboard-manager plugin), Quit
+
+**Config directory (runtime):** `~/Library/Application Support/com.yagnilabs.midimaster/config/`
+Default config files are copied here on first launch from the bundled resources.
+
+REST API (served on `:3000`):
 - `GET /api/surfaces` — list of surface metadata
 - `GET /api/surfaces/:id` — full surface config
-- `GET /api/info` — mDNS hostname + local IP (port is NOT authoritative — frontend uses `window.location.port`)
+- `GET /api/info` — mDNS hostname + local IP + port
 - `GET /midi/ports` — available MIDI output ports
 
-In production the backend also serves `frontend/dist/` as static files.
+Web UI static files: served from `resource_dir()` in production (Tauri bundles `dist/` there via `frontendDist`); served from `dist/` relative to CWD in dev.
 
-### Frontend (`frontend/src/`)
+### Frontend (`src/`)
 
-Vite + SolidJS + TypeScript. Hash-based routing (`/#/`, `/#/surface/:id`).
+Vite + SolidJS + TypeScript. Two separate Vite entry points:
+
+| Entry | Purpose |
+|-------|---------|
+| `index.html` → `src/index.tsx` | Web UI for browser clients (phone/tablet) |
+| `desktop.html` → `src/desktop.tsx` | Tauri desktop window UI |
 
 | File | Purpose |
 |------|---------|
-| `index.tsx` | App entry point |
-| `App.tsx` | Root component: `HashRouter`, shell layout, header |
-| `state.ts` | Global signal for `pageTitle` |
+| `App.tsx` | Hash router + shell layout + header |
+| `state.ts` | Global `pageTitle` signal |
 | `ws.ts` | Initialises `wsManager`, exposes SolidJS signals for WS status |
-| `ws-manager.ts` | WS singleton with exponential-backoff reconnect (1s–8s) |
-| `pages/Overview.tsx` | Surface list cards + share section (URLs, QR code) |
+| `ws-manager.ts` | WS singleton using `partysocket` (exponential-backoff reconnect 1–8s) |
+| `server-url.ts` | `API_BASE` and `wsUrl()` — handles dev vs Tauri-prod URL differences |
+| `pages/Overview.tsx` | Surface list cards + share section (mDNS URL, QR code) |
 | `pages/Surface.tsx` | Control grid — renders `MidiButton`, `MidiSlider`, `MidiToggle` |
+| `pages/DesktopApp.tsx` | Desktop window: QR, URL, connected count, MIDI activity, quit |
 
-Dev proxy in `vite.config.ts` forwards `/api`, `/midi`, and `/ws` to `localhost:3000`.
+**URL resolution:**
+- In **Tauri dev**: window loads from `http://localhost:5173`, so `window.location.port = 5173`. WS is proxied by Vite. Relative `/api` fetches are proxied by Vite. Share URL uses port 5173.
+- In **Tauri prod**: window loads from `tauri://localhost`. Relative URLs don't reach the Rust backend. `server-url.ts` detects this via `window.__TAURI_INTERNALS__` and uses absolute `http://localhost:3000` URLs. Share URL falls back to `BACKEND_PORT` (3000).
+- In **browser**: all URLs are relative, `window.location.port` gives the right port.
+
+Vite dev proxy (`vite.config.ts`) forwards `/api` and `/ws` to `localhost:3000`.
 
 ### WebSocket protocol
 
@@ -73,20 +95,24 @@ Client → Server:
 
 Server → Client:
 ```json
-{ "type": "connected",        "midiPort": "MidiMaster (virtual)", "midiConnected": true }
-{ "type": "surfaces_updated"  }
-{ "type": "error",            "message": "..." }
+{ "type": "connected",       "midiPort": "MidiMaster (virtual)", "midiConnected": true }
+{ "type": "surfaces_updated" }
+{ "type": "clients_updated", "count": 2 }
+{ "type": "midi_activity" }
 ```
 
 ## Configuration
 
-### `backend/config/settings.yaml`
+### `settings.yaml`
 
-Global MIDI port. Options: `"virtual"` (creates a virtual port), port name (partial match, case-insensitive), or port index integer.
+```yaml
+midi:
+  port: virtual       # "virtual" | port name (partial match) | port index integer
+```
 
-### `backend/config/surfaces/*.yaml`
+### `surfaces/*.yaml`
 
-One file = one control surface. Files are hot-reloaded — edit while the server is running and the UI updates automatically.
+One file = one control surface. Files are hot-reloaded while the app is running.
 
 Control types:
 
@@ -105,7 +131,7 @@ Control types:
 - type: toggle
   label: Loop
   cc: 64
-  value: 127        # optional, default 127
+  value: 127        # CC value when on (default 127)
   channel: 1
   color: "#7d3c98"
   default: false    # optional initial state
@@ -122,10 +148,24 @@ Control types:
   span: 2
 ```
 
+Surface-level layout:
+
+```yaml
+name: My Surface
+color: "#c0392b"        # accent color for the overview card
+layout:
+  columns: 4            # grid columns (default 4)
+  gap: 10               # gap in px (default 10)
+controls:
+  - ...
+```
+
 ## Key technical notes
 
-- **MIDI channel** is 1-indexed (1–16) in all config and protocol messages; the backend converts to 0-indexed for the `midi` package internally.
-- **Share URLs** on the Overview page are constructed client-side using `window.location.port` so they reflect the actual port (5173 in dev, 3000 in prod), not the hardcoded backend port.
-- **Copy to clipboard** uses `navigator.clipboard` with an `execCommand` fallback for HTTP (non-HTTPS) contexts on Android.
-- **`midi` package** requires a native C++ build (node-gyp). On macOS: `xcode-select --install`. On Linux: `build-essential libasound2-dev`.
-- **Types are duplicated** between `backend/src/types.ts` and `frontend/src/types.ts` — keep them in sync when adding control types.
+- **MIDI channel** is 1-indexed (1–16) in config and protocol; Rust converts to 0-indexed internally.
+- **Share URL** uses mDNS hostname (`midimaster-<hostname>.local`) as primary. IP address is shown as secondary on the Overview page. QR code always encodes the mDNS URL.
+- **Tauri prod vs dev URL detection** lives in `src/server-url.ts`. The check is `'__TAURI_INTERNALS__' in window && !import.meta.env.DEV`.
+- **Web UI in production**: Tauri places `frontendDist` files in `resource_dir()` on macOS (`Contents/Resources/`). The Rust HTTP server checks for `index.html` there and falls back to `CWD/dist` in dev.
+- **Config install**: on first run, default YAML files are copied from `src-tauri/config/` (bundled resources) to the user's app config directory. Subsequent launches read from the user config directory.
+- **File watching**: surface YAML files are watched with a 150ms debounce. Changes broadcast `surfaces_updated` to all WS clients.
+- **Single instance**: `tauri-plugin-single-instance` prevents launching a second copy; the existing window is focused instead.

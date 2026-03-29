@@ -5,6 +5,7 @@ import { invoke } from '@tauri-apps/api/core'
 import { Copy, Check, ExternalLink, FolderOpen, Power } from 'lucide-solid'
 import { wsManager } from '../ws-manager'
 import { wsConnected } from '../ws'
+import { API_BASE, BACKEND_PORT } from '../server-url'
 import type { ServerInfo } from '../types'
 
 function qrSvg(url: string): string {
@@ -14,16 +15,30 @@ function qrSvg(url: string): string {
     .replace(/\sheight="\d+"/, '')
 }
 
+function CopyBtn(props: { text: string }) {
+  const [copied, setCopied] = createSignal(false)
+  function copy() {
+    const finish = () => { setCopied(true); setTimeout(() => setCopied(false), 2000) }
+    writeClipboard(props.text).then(finish).catch(finish)
+  }
+  return (
+    <button class="da-icon-btn" classList={{ copied: copied() }} onClick={copy} title="Copy">
+      <Show when={copied()} fallback={<Copy size={15} />}>
+        <Check size={15} />
+      </Show>
+    </button>
+  )
+}
+
 export default function DesktopApp() {
   const [info] = createResource<ServerInfo>(async () => {
-    const res = await fetch('/api/info')
+    const res = await fetch(`${API_BASE}/api/info`)
     if (!res.ok) throw new Error(`HTTP ${res.status}`)
     return res.json()
   })
 
   const [clientCount, setClientCount] = createSignal(0)
   const [midiFlash, setMidiFlash] = createSignal(false)
-  const [copied, setCopied] = createSignal(false)
 
   let midiTimer: ReturnType<typeof setTimeout> | null = null
 
@@ -42,23 +57,25 @@ export default function DesktopApp() {
     if (midiTimer) clearTimeout(midiTimer)
   })
 
-  function getShareUrl(i: ServerInfo): string {
-    const port = i.port !== 80 && i.port !== 443 ? `:${i.port}` : ''
-    return i.localIp ? `http://${i.localIp}${port}` : `http://${i.mdnsHostname}${port}`
+  function port(): string {
+    return window.location.port || String(BACKEND_PORT)
   }
 
-  function copyLink() {
-    const i = info()
-    if (!i) return
-    const url = getShareUrl(i)
-    const finish = () => { setCopied(true); setTimeout(() => setCopied(false), 2000) }
-    writeClipboard(url).then(finish).catch(finish)
+  function getMdnsUrl(i: ServerInfo): string {
+    return `http://${i.mdnsHostname}:${port()}`
   }
 
-  function openInBrowser() {
-    const i = info()
-    if (!i) return
-    invoke('open_in_browser', { url: getShareUrl(i) })
+  function getIpUrl(i: ServerInfo): string | null {
+    return i.localIp ? `http://${i.localIp}:${port()}` : null
+  }
+
+  function getQrUrl(i: ServerInfo): string {
+    // Use IP for QR — mDNS .local names don't resolve on Android browsers
+    return getIpUrl(i) ?? getMdnsUrl(i)
+  }
+
+  function openInBrowser(url: string) {
+    invoke('open_in_browser', { url: url })
   }
 
   function openConfigFolder() {
@@ -76,25 +93,30 @@ export default function DesktopApp() {
         {(i) => (
           <>
             <div class="da-qr-wrap">
-              <div class="da-qr" innerHTML={qrSvg(getShareUrl(i()))} />
+              <div class="da-qr" innerHTML={qrSvg(getQrUrl(i()))} />
             </div>
 
             <div class="da-url-row">
-              <span class="da-url">{getShareUrl(i())}</span>
-              <button
-                class="da-icon-btn"
-                classList={{ copied: copied() }}
-                onClick={copyLink}
-                title="Copy link"
-              >
-                <Show when={copied()} fallback={<Copy size={15} />}>
-                  <Check size={15} />
-                </Show>
-              </button>
-              <button class="da-icon-btn" onClick={openInBrowser} title="Open in browser">
+              <span class="url-tag">mDNS</span>
+              <span class="da-url">{getMdnsUrl(i())}</span>
+              <CopyBtn text={getMdnsUrl(i())} />
+              <button class="da-icon-btn" onClick={() => openInBrowser(getMdnsUrl(i()))} title="Open in browser">
                 <ExternalLink size={15} />
               </button>
             </div>
+
+            <Show when={getIpUrl(i())}>
+              {(url) => (
+                <div class="da-url-row">
+                  <span class="url-tag">IP</span>
+                  <span class="da-url">{url()}</span>
+                  <CopyBtn text={url()} />
+                  <button class="da-icon-btn" onClick={() => openInBrowser(url())} title="Open in browser">
+                <ExternalLink size={15} />
+              </button>
+                </div>
+              )}
+            </Show>
 
             <div class="da-status-row">
               <div class="da-stat">
