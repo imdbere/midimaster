@@ -17,9 +17,17 @@ Run it on your laptop, share the link with any device on your network, and contr
 
 ### Requirements
 
-- macOS (Windows/Linux support via Tauri, untested)
+- macOS or Windows (Linux untested)
 - Rust + Cargo (`rustup.rs`)
 - Node.js + npm
+- **Windows only:** [loopMIDI](https://www.tobias-erichsen.de/software/loopmidi.html) must be installed
+
+Windows does not support virtual MIDI ports natively. MidiMaster uses the teVirtualMIDI driver (bundled with loopMIDI) to create a virtual port named **MidiMaster** at startup. Install loopMIDI once — you don't need to create any ports in it, just install it so the driver is present. The port will appear in Ableton's MIDI preferences (and any other DAW) automatically when MidiMaster is running.
+
+BUG: Due to an issue with Windows new MIDI driver that is currently being rolled out, virtual midi devices will sometimes not appear after being created. To fix this, restart "Windows MIDI Service" using the Services panel AFTER starting midimaster. More info:
+- https://forums.steinberg.net/t/loop-midi-hidden-in-windows-11-25h2-fix/1024008 
+- https://devblogs.microsoft.com/windows-music-dev/windows-midi-services-rollout-known-issues-and-workarounds/ 
+- https://github.com/microsoft/MIDI/issues/835
 
 ### Run in development
 
@@ -52,7 +60,15 @@ The URL uses the mDNS hostname (`midimaster-<computername>.local`) which resolve
 Config files live at:
 
 ```
+# macOS
 ~/Library/Application Support/com.yagnilabs.midimaster/config/
+
+# Windows
+%APPDATA%\com.yagnilabs.midimaster\config\
+```
+
+```
+config/
   settings.yaml        ← MIDI port selection
   surfaces/
     drums.yaml         ← your surfaces

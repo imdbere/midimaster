@@ -2,9 +2,28 @@ use midir::{MidiOutput, MidiOutputConnection};
 #[cfg(unix)]
 use midir::os::unix::VirtualOutput;
 use super::types::PortConfig;
+#[cfg(windows)]
+use super::te_virtual_midi::VirtualMidiPort;
+
+/// Abstracts over a real midir connection and a Windows virtual port.
+enum MidiConn {
+    Real(MidiOutputConnection),
+    #[cfg(windows)]
+    WindowsVirtual(VirtualMidiPort),
+}
+
+impl MidiConn {
+    fn send(&mut self, data: &[u8]) {
+        match self {
+            MidiConn::Real(conn) => { let _ = conn.send(data); }
+            #[cfg(windows)]
+            MidiConn::WindowsVirtual(port) => port.send(data),
+        }
+    }
+}
 
 pub struct MidiManager {
-    connection: Option<MidiOutputConnection>,
+    connection: Option<MidiConn>,
     pub port_name: String,
     pub connected: bool,
 }
@@ -34,28 +53,39 @@ impl MidiManager {
     fn try_connect(
         &self,
         config: &PortConfig,
-    ) -> Result<(MidiOutputConnection, String), Box<dyn std::error::Error>> {
-        let output = MidiOutput::new("MidiMaster")?;
-
+    ) -> Result<(MidiConn, String), Box<dyn std::error::Error>> {
         match config {
             PortConfig::Virtual => {
-                let conn = output.create_virtual("MidiMaster")?;
-                Ok((conn, "MidiMaster (virtual)".to_string()))
+                #[cfg(unix)]
+                {
+                    let output = MidiOutput::new("MidiMaster")?;
+                    let conn = output.create_virtual("MidiMaster")?;
+                    return Ok((MidiConn::Real(conn), "MidiMaster (virtual)".to_string()));
+                }
+                #[cfg(windows)]
+                {
+                    let port = VirtualMidiPort::new("MidiMaster")?;
+                    return Ok((MidiConn::WindowsVirtual(port), "MidiMaster (virtual)".to_string()));
+                }
+                #[allow(unreachable_code)]
+                Err("Virtual MIDI ports are not supported on this platform".into())
             }
             PortConfig::Index(i) => {
+                let output = MidiOutput::new("MidiMaster")?;
                 let ports = output.ports();
                 let port = ports.get(*i).ok_or("Port index out of range")?;
                 let name = output.port_name(port)?;
                 let conn = output.connect(port, "MidiMaster")?;
-                Ok((conn, name))
+                Ok((MidiConn::Real(conn), name))
             }
             PortConfig::Name(target) => {
+                let output = MidiOutput::new("MidiMaster")?;
                 let ports = output.ports();
                 for port in &ports {
                     let name = output.port_name(port)?;
                     if name.to_lowercase().contains(&target.to_lowercase()) {
                         let conn = output.connect(port, "MidiMaster")?;
-                        return Ok((conn, name));
+                        return Ok((MidiConn::Real(conn), name));
                     }
                 }
                 Err(format!("No MIDI port matching '{target}'").into())
@@ -77,19 +107,19 @@ impl MidiManager {
     /// channel is 1-indexed (1–16)
     pub fn note_on(&mut self, channel: u8, note: u8, velocity: u8) {
         if let Some(conn) = &mut self.connection {
-            let _ = conn.send(&[0x90 | (channel.saturating_sub(1) & 0x0F), note & 0x7F, velocity & 0x7F]);
+            conn.send(&[0x90 | (channel.saturating_sub(1) & 0x0F), note & 0x7F, velocity & 0x7F]);
         }
     }
 
     pub fn note_off(&mut self, channel: u8, note: u8) {
         if let Some(conn) = &mut self.connection {
-            let _ = conn.send(&[0x80 | (channel.saturating_sub(1) & 0x0F), note & 0x7F, 0]);
+            conn.send(&[0x80 | (channel.saturating_sub(1) & 0x0F), note & 0x7F, 0]);
         }
     }
 
     pub fn cc(&mut self, channel: u8, cc: u8, value: u8) {
         if let Some(conn) = &mut self.connection {
-            let _ = conn.send(&[0xB0 | (channel.saturating_sub(1) & 0x0F), cc & 0x7F, value & 0x7F]);
+            conn.send(&[0xB0 | (channel.saturating_sub(1) & 0x0F), cc & 0x7F, value & 0x7F]);
         }
     }
 }
