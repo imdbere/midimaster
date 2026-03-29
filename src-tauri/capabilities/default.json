@@ -1,0 +1,11 @@
+{
+  "$schema": "../node_modules/@tauri-apps/cli/schema/acl/capability.schema.json",
+  "identifier": "default",
+  "description": "Default capabilities for MidiMaster",
+  "windows": ["main"],
+  "permissions": [
+    "core:default",
+    "clipboard-manager:allow-write-text",
+    "clipboard-manager:allow-read-text"
+  ]
+}
