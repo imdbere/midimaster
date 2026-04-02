@@ -312,7 +312,7 @@ html, body {
 .controls-grid {
   display: grid;
   padding: 10px;
-  align-content: start;
+  height: 100%;
 }
 
 /* ── Base control ─────────────────────────────────────────────────────────── */

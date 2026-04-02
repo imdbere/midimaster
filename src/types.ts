@@ -45,6 +45,7 @@ export type Control = ButtonControl | SliderControl | ToggleControl
 
 export interface SurfaceLayout {
   columns?: number
+  rows?: number
   gap?: number
 }
 

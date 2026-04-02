@@ -58,6 +58,7 @@ pub struct ToggleControl {
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct SurfaceLayout {
     pub columns: Option<u32>,
+    pub rows: Option<u32>,
     pub gap: Option<u32>,
 }
 
