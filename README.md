@@ -17,9 +17,13 @@ Run it on your laptop, share the link with any device on your network, and contr
 
 ### Requirements
 
-- macOS or Windows (Linux untested)
+- macOS, Windows, or Linux
 - Rust + Cargo (`rustup.rs`)
 - Node.js + npm
+- **Linux only:** install these system libraries before building:
+  ```bash
+  sudo apt install libgtk-3-dev libsoup-3.0-dev libwebkit2gtk-4.1-dev libasound2-dev
+  ```
 - **Windows only:** [loopMIDI](https://www.tobias-erichsen.de/software/loopmidi.html) must be installed
 
 Windows does not support virtual MIDI ports natively. MidiMaster uses the teVirtualMIDI driver (bundled with loopMIDI) to create a virtual port named **MidiMaster** at startup. Install loopMIDI once — you don't need to create any ports in it, just install it so the driver is present. The port will appear in Ableton's MIDI preferences (and any other DAW) automatically when MidiMaster is running.
