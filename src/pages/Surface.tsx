@@ -20,18 +20,18 @@ function MidiButton(props: { ctrl: ButtonControl }) {
   const [active, setActive] = createSignal(false)
 
   function press() {
-    if (ctrl.note !== undefined) {
+    if (ctrl.note != undefined) {
       wsManager.send({ type: 'note_on', note: ctrl.note, velocity: ctrl.velocity ?? 127, channel: ctrl.channel ?? 1 })
-    } else if (ctrl.cc !== undefined) {
+    } else if (ctrl.cc != undefined) {
       wsManager.send({ type: 'cc', cc: ctrl.cc, value: ctrl.value ?? 127, channel: ctrl.channel ?? 1 })
     }
   }
 
   function release() {
-    if (ctrl.note !== undefined) {
+    if (ctrl.note != undefined) {
       wsManager.send({ type: 'note_off', note: ctrl.note, channel: ctrl.channel ?? 1 })
-    } else if (ctrl.cc !== undefined) {
-      wsManager.send({ type: 'cc', cc: ctrl.cc, value: 0, channel: ctrl.channel ?? 1 })
+    } else if (ctrl.cc != undefined) {
+      // CC buttons: no release message — value was already sent on press
     }
   }
 
