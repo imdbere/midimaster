@@ -169,6 +169,7 @@ export default function Surface() {
       class="controls-grid"
       style={{
         'grid-template-columns': `repeat(${config()?.layout?.columns ?? 4}, 1fr)`,
+        'grid-template-rows': `repeat(${config()?.layout?.rows ?? 10}, 1fr)`,
         'gap': `${config()?.layout?.gap ?? 10}px`,
       }}
     >
