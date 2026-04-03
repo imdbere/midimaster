@@ -123,13 +123,15 @@ pub enum PortConfig {
 impl<'de> Deserialize<'de> for PortConfig {
     fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
         use serde::de::Error;
-        let v = serde_yaml::Value::deserialize(d)
-            .map_err(|e| D::Error::custom(e.to_string()))?;
+        let v = serde_yaml::Value::deserialize(d).map_err(|e| D::Error::custom(e.to_string()))?;
         match v {
             serde_yaml::Value::String(s) if s == "virtual" => Ok(PortConfig::Virtual),
             serde_yaml::Value::String(s) => Ok(PortConfig::Name(s)),
             serde_yaml::Value::Number(n) => {
-                let i = n.as_u64().ok_or_else(|| D::Error::custom("invalid port index"))? as usize;
+                let i = n
+                    .as_u64()
+                    .ok_or_else(|| D::Error::custom("invalid port index"))?
+                    as usize;
                 Ok(PortConfig::Index(i))
             }
             _ => Ok(PortConfig::Virtual),

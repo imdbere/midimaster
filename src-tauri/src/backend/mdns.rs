@@ -8,7 +8,11 @@ pub fn get_mdns_hostname() -> String {
         .filter(|c| c.is_alphanumeric())
         .collect::<String>()
         .to_lowercase();
-    let trimmed = if clean.len() > 10 { &clean[..10] } else { &clean };
+    let trimmed = if clean.len() > 10 {
+        &clean[..10]
+    } else {
+        &clean
+    };
     format!("midimaster-{trimmed}")
 }
 

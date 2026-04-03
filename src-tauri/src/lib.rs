@@ -1,8 +1,8 @@
 mod backend;
 
 use std::path::PathBuf;
-use std::sync::{Arc, Mutex, RwLock};
 use std::sync::atomic::AtomicUsize;
+use std::sync::{Arc, Mutex, RwLock};
 use tauri::{
     menu::{Menu, MenuItem, PredefinedMenuItem},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
@@ -11,10 +11,10 @@ use tauri::{
 use tokio::sync::broadcast;
 
 use backend::{
-    midi::MidiManager,
     mdns,
+    midi::MidiManager,
     server::{run_server, ServerState},
-    surfaces::{SurfaceManager, watch_surfaces},
+    surfaces::{watch_surfaces, SurfaceManager},
     types::PortConfig,
 };
 
@@ -40,13 +40,20 @@ fn quit_app(app: tauri::AppHandle) {
     app.exit(0);
 }
 
+#[tauri::command]
+fn relaunch_app(app: tauri::AppHandle) {
+    app.restart();
+}
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 fn open_url(target: &str) {
     #[cfg(target_os = "macos")]
     let _ = std::process::Command::new("open").arg(target).spawn();
     #[cfg(target_os = "windows")]
-    let _ = std::process::Command::new("cmd").args(["/c", "start", target]).spawn();
+    let _ = std::process::Command::new("cmd")
+        .args(["/c", "start", target])
+        .spawn();
     #[cfg(target_os = "linux")]
     let _ = std::process::Command::new("xdg-open").arg(target).spawn();
 }
@@ -70,14 +77,20 @@ fn install_default_configs(app: &tauri::AppHandle) {
     // Settings file
     let settings_dst = config_dir.join("settings.yaml");
     if !settings_dst.exists() {
-        if let Ok(resource) = app.path().resolve("config/settings.yaml", tauri::path::BaseDirectory::Resource) {
+        if let Ok(resource) = app
+            .path()
+            .resolve("config/settings.yaml", tauri::path::BaseDirectory::Resource)
+        {
             let _ = std::fs::copy(resource, &settings_dst);
         }
     }
 
     // Surface YAML files
     let surfaces_dir = config_dir.join("surfaces");
-    if let Ok(resource_surfaces) = app.path().resolve("config/surfaces", tauri::path::BaseDirectory::Resource) {
+    if let Ok(resource_surfaces) = app
+        .path()
+        .resolve("config/surfaces", tauri::path::BaseDirectory::Resource)
+    {
         if let Ok(entries) = std::fs::read_dir(&resource_surfaces) {
             for entry in entries.flatten() {
                 let dst = surfaces_dir.join(entry.file_name());
@@ -93,6 +106,7 @@ fn install_default_configs(app: &tauri::AppHandle) {
 
 pub fn run() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
             // Focus existing window when a second instance is launched
             if let Some(window) = app.get_webview_window("main") {
@@ -134,15 +148,13 @@ pub fn run() {
             // In dev:  dist/ is built by Vite at the project root (CWD).
             // In prod: Tauri places ../dist/** into resource_dir()/www/ via bundle.resources.
             // In dev:  fall back to dist/ in the project root (built by Vite / CWD).
-            let static_dir = app.path().resource_dir()
+            let static_dir = app
+                .path()
+                .resource_dir()
                 .ok()
                 .map(|p| p.join("www"))
                 .filter(|p| p.join("index.html").exists())
-                .unwrap_or_else(|| {
-                    std::env::current_dir()
-                        .unwrap_or_default()
-                        .join("dist")
-                });
+                .unwrap_or_else(|| std::env::current_dir().unwrap_or_default().join("dist"));
 
             let server_state = ServerState {
                 midi: Arc::clone(&midi),
@@ -180,12 +192,7 @@ pub fn run() {
                     "quit" => app.exit(0),
                     "show" => bring_to_front(app),
                     "copy_link" => {
-                        let url = app
-                            .state::<SharedUrl>()
-                            .0
-                            .lock()
-                            .unwrap()
-                            .clone();
+                        let url = app.state::<SharedUrl>().0.lock().unwrap().clone();
                         use tauri_plugin_clipboard_manager::ClipboardExt;
                         let _ = app.clipboard().write_text(url);
                     }
@@ -205,7 +212,12 @@ pub fn run() {
 
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![open_in_browser, open_config_folder, quit_app])
+        .invoke_handler(tauri::generate_handler![
+            open_in_browser,
+            open_config_folder,
+            quit_app,
+            relaunch_app
+        ])
         .on_window_event(|window, event| {
             if let tauri::WindowEvent::CloseRequested { api, .. } = event {
                 window.hide().unwrap();
@@ -233,9 +245,7 @@ fn load_port_config(settings_path: &std::path::Path) -> PortConfig {
     match &doc["midi"]["port"] {
         serde_yaml::Value::String(s) if s == "virtual" => PortConfig::Virtual,
         serde_yaml::Value::String(s) => PortConfig::Name(s.clone()),
-        serde_yaml::Value::Number(n) => {
-            PortConfig::Index(n.as_u64().unwrap_or(0) as usize)
-        }
+        serde_yaml::Value::Number(n) => PortConfig::Index(n.as_u64().unwrap_or(0) as usize),
         _ => PortConfig::Virtual,
     }
 }

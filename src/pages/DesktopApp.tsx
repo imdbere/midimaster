@@ -1,33 +1,20 @@
 import { createResource, createSignal, onCleanup, Show } from 'solid-js'
 import { renderSVG } from 'uqr'
-import { writeClipboard } from '@solid-primitives/clipboard'
 import { invoke } from '@tauri-apps/api/core'
-import { Copy, Check, ExternalLink, FolderOpen, Power } from 'lucide-solid'
+import { ExternalLink, FolderOpen, Power } from 'lucide-solid'
 import { wsManager } from '../ws-manager'
 import { wsConnected } from '../ws'
 import { API_BASE, BACKEND_PORT } from '../server-url'
 import type { ServerInfo } from '../types'
+import { CopyBtn } from '../components/CopyBtn'
+import { UpdateBanner } from '../components/UpdateBanner'
+import './DesktopApp.css'
 
 function qrSvg(url: string): string {
   const svg = renderSVG(url)
   return svg
     .replace(/\swidth="\d+"/, '')
     .replace(/\sheight="\d+"/, '')
-}
-
-function CopyBtn(props: { text: string }) {
-  const [copied, setCopied] = createSignal(false)
-  function copy() {
-    const finish = () => { setCopied(true); setTimeout(() => setCopied(false), 2000) }
-    writeClipboard(props.text).then(finish).catch(finish)
-  }
-  return (
-    <button class="da-icon-btn" classList={{ copied: copied() }} onClick={copy} title="Copy">
-      <Show when={copied()} fallback={<Copy size={15} />}>
-        <Check size={15} />
-      </Show>
-    </button>
-  )
 }
 
 export default function DesktopApp() {
@@ -75,7 +62,7 @@ export default function DesktopApp() {
   }
 
   function openInBrowser(url: string) {
-    invoke('open_in_browser', { url: url })
+    invoke('open_in_browser', { url })
   }
 
   function openConfigFolder() {
@@ -88,7 +75,6 @@ export default function DesktopApp() {
 
   return (
     <div class="desktop-app">
-
       <Show when={info()} fallback={<p class="loading">Starting server…</p>}>
         {(i) => (
           <>
@@ -112,8 +98,8 @@ export default function DesktopApp() {
                   <span class="da-url">{url()}</span>
                   <CopyBtn text={url()} />
                   <button class="da-icon-btn" onClick={() => openInBrowser(url())} title="Open in browser">
-                <ExternalLink size={15} />
-              </button>
+                    <ExternalLink size={15} />
+                  </button>
                 </div>
               )}
             </Show>
@@ -134,6 +120,8 @@ export default function DesktopApp() {
             </div>
 
             <p class="da-hint">Scan QR or share URL to open on a phone or tablet</p>
+
+            <UpdateBanner />
 
             <div class="da-actions">
               <button class="da-action-btn" onClick={openConfigFolder} title="Open config folder">

@@ -1,9 +1,9 @@
-use midir::{MidiOutput, MidiOutputConnection};
-#[cfg(unix)]
-use midir::os::unix::VirtualOutput;
-use super::types::PortConfig;
 #[cfg(windows)]
 use super::te_virtual_midi::VirtualMidiPort;
+use super::types::PortConfig;
+#[cfg(unix)]
+use midir::os::unix::VirtualOutput;
+use midir::{MidiOutput, MidiOutputConnection};
 
 /// Abstracts over a real midir connection and a Windows virtual port.
 enum MidiConn {
@@ -15,7 +15,9 @@ enum MidiConn {
 impl MidiConn {
     fn send(&mut self, data: &[u8]) {
         match self {
-            MidiConn::Real(conn) => { let _ = conn.send(data); }
+            MidiConn::Real(conn) => {
+                let _ = conn.send(data);
+            }
             #[cfg(windows)]
             MidiConn::WindowsVirtual(port) => port.send(data),
         }
@@ -65,7 +67,10 @@ impl MidiManager {
                 #[cfg(windows)]
                 {
                     let port = VirtualMidiPort::new("MidiMaster")?;
-                    return Ok((MidiConn::WindowsVirtual(port), "MidiMaster (virtual)".to_string()));
+                    return Ok((
+                        MidiConn::WindowsVirtual(port),
+                        "MidiMaster (virtual)".to_string(),
+                    ));
                 }
                 #[allow(unreachable_code)]
                 Err("Virtual MIDI ports are not supported on this platform".into())
@@ -107,7 +112,11 @@ impl MidiManager {
     /// channel is 1-indexed (1–16)
     pub fn note_on(&mut self, channel: u8, note: u8, velocity: u8) {
         if let Some(conn) = &mut self.connection {
-            conn.send(&[0x90 | (channel.saturating_sub(1) & 0x0F), note & 0x7F, velocity & 0x7F]);
+            conn.send(&[
+                0x90 | (channel.saturating_sub(1) & 0x0F),
+                note & 0x7F,
+                velocity & 0x7F,
+            ]);
         }
     }
 
@@ -119,7 +128,11 @@ impl MidiManager {
 
     pub fn cc(&mut self, channel: u8, cc: u8, value: u8) {
         if let Some(conn) = &mut self.connection {
-            conn.send(&[0xB0 | (channel.saturating_sub(1) & 0x0F), cc & 0x7F, value & 0x7F]);
+            conn.send(&[
+                0xB0 | (channel.saturating_sub(1) & 0x0F),
+                cc & 0x7F,
+                value & 0x7F,
+            ]);
         }
     }
 }

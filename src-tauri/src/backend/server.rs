@@ -1,23 +1,23 @@
-use std::sync::{Arc, Mutex, RwLock};
-use std::sync::atomic::{AtomicUsize, Ordering};
-use std::path::PathBuf;
-use std::net::SocketAddr;
 use axum::{
-    extract::{Path, State, WebSocketUpgrade},
     extract::ws::{Message, WebSocket},
+    extract::{Path, State, WebSocketUpgrade},
     http::StatusCode,
     response::{IntoResponse, Response},
     routing::get,
     Json, Router,
 };
 use futures_util::{SinkExt, StreamExt};
+use serde_json::{json, Value};
+use std::net::SocketAddr;
+use std::path::PathBuf;
+use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::{Arc, Mutex, RwLock};
 use tokio::sync::broadcast;
 use tower_http::{cors::CorsLayer, services::ServeDir};
-use serde_json::{json, Value};
 
 use super::{
-    midi::MidiManager,
     mdns::{get_local_ip, get_mdns_hostname},
+    midi::MidiManager,
     surfaces::SurfaceManager,
 };
 
@@ -71,7 +71,11 @@ async fn get_surface(Path(id): Path<String>, State(s): State<ServerState>) -> Re
     let surfaces = s.surfaces.read().unwrap();
     match surfaces.get(&id) {
         Some(surface) => Json(json!(surface)).into_response(),
-        None => (StatusCode::NOT_FOUND, Json(json!({ "error": "Surface not found" }))).into_response(),
+        None => (
+            StatusCode::NOT_FOUND,
+            Json(json!({ "error": "Surface not found" })),
+        )
+            .into_response(),
     }
 }
 
@@ -108,9 +112,9 @@ async fn handle_ws(socket: WebSocket, state: ServerState) {
 
     // Increment client count and broadcast
     let count = state.client_count.fetch_add(1, Ordering::SeqCst) + 1;
-    let _ = state.broadcast_tx.send(
-        json!({ "type": "clients_updated", "count": count }).to_string()
-    );
+    let _ = state
+        .broadcast_tx
+        .send(json!({ "type": "clients_updated", "count": count }).to_string());
 
     // Send initial connected message
     let init_msg = {
@@ -119,7 +123,8 @@ async fn handle_ws(socket: WebSocket, state: ServerState) {
             "type": "connected",
             "midiPort": midi.port_name,
             "midiConnected": midi.connected,
-        }).to_string()
+        })
+        .to_string()
     };
 
     if sender.send(Message::Text(init_msg.into())).await.is_err() {
@@ -156,9 +161,9 @@ async fn handle_ws(socket: WebSocket, state: ServerState) {
 
     // Decrement and broadcast updated count
     let remaining = state.client_count.fetch_sub(1, Ordering::SeqCst) - 1;
-    let _ = state.broadcast_tx.send(
-        json!({ "type": "clients_updated", "count": remaining }).to_string()
-    );
+    let _ = state
+        .broadcast_tx
+        .send(json!({ "type": "clients_updated", "count": remaining }).to_string());
 }
 
 fn handle_midi_command(
@@ -170,14 +175,22 @@ fn handle_midi_command(
     let mut midi = midi.lock().unwrap();
     match cmd["type"].as_str().unwrap_or("") {
         "note_on" => {
-            midi.note_on(ch, cmd["note"].as_u64().unwrap_or(0) as u8, cmd["velocity"].as_u64().unwrap_or(127) as u8);
+            midi.note_on(
+                ch,
+                cmd["note"].as_u64().unwrap_or(0) as u8,
+                cmd["velocity"].as_u64().unwrap_or(127) as u8,
+            );
             let _ = tx.send(json!({ "type": "midi_activity" }).to_string());
         }
         "note_off" => {
             midi.note_off(ch, cmd["note"].as_u64().unwrap_or(0) as u8);
         }
         "cc" => {
-            midi.cc(ch, cmd["cc"].as_u64().unwrap_or(0) as u8, cmd["value"].as_u64().unwrap_or(0) as u8);
+            midi.cc(
+                ch,
+                cmd["cc"].as_u64().unwrap_or(0) as u8,
+                cmd["value"].as_u64().unwrap_or(0) as u8,
+            );
             let _ = tx.send(json!({ "type": "midi_activity" }).to_string());
         }
         _ => {}

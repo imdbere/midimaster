@@ -61,9 +61,9 @@ impl VirtualMidiPort {
         let port = unsafe {
             virtualMIDICreatePortEx2(
                 wide.as_ptr(),
-                None,         // no RX callback needed (TX-only port)
+                None, // no RX callback needed (TX-only port)
                 0,
-                65535,        // max sysex length
+                65535, // max sysex length
                 TE_VM_FLAGS_INSTANTIATE_TX_ONLY,
             )
         };

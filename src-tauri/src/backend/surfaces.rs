@@ -1,9 +1,11 @@
+use super::types::{SurfaceConfig, SurfaceMeta};
+use notify_debouncer_mini::{
+    new_debouncer, notify::RecursiveMode, DebounceEventResult, DebouncedEventKind,
+};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, RwLock};
-use notify_debouncer_mini::{new_debouncer, notify::RecursiveMode, DebounceEventResult, DebouncedEventKind};
 use tokio::sync::broadcast;
-use super::types::{SurfaceConfig, SurfaceMeta};
 
 pub struct SurfaceManager {
     surfaces: HashMap<String, SurfaceConfig>,
@@ -22,7 +24,9 @@ impl SurfaceManager {
 
     pub fn reload(&mut self) {
         self.surfaces.clear();
-        let Ok(entries) = std::fs::read_dir(&self.dir) else { return };
+        let Ok(entries) = std::fs::read_dir(&self.dir) else {
+            return;
+        };
 
         for entry in entries.flatten() {
             let path = entry.path();
@@ -74,11 +78,8 @@ pub fn watch_surfaces(
     std::thread::spawn(move || {
         let (debounce_tx, debounce_rx) = std::sync::mpsc::channel::<DebounceEventResult>();
 
-        let mut debouncer = new_debouncer(
-            std::time::Duration::from_millis(150),
-            debounce_tx,
-        )
-        .expect("Failed to create file watcher");
+        let mut debouncer = new_debouncer(std::time::Duration::from_millis(150), debounce_tx)
+            .expect("Failed to create file watcher");
 
         debouncer
             .watcher()
