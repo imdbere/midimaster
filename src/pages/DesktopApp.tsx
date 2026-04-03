@@ -119,7 +119,7 @@ export default function DesktopApp() {
               </div>
             </div>
 
-            <p class="da-hint">Scan QR or share URL to open on a phone or tablet</p>
+            <p class="da-hint">Scan QR code or share URL to open on a phone or tablet</p>
 
             <UpdateBanner />
 
